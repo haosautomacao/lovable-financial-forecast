@@ -12,8 +12,9 @@ import {
   calculateFinancialMetrics,
   CalculationResults
 } from '@/utils/calculations';
-import { distributors, states, getDistributorsByState } from '@/utils/distributors';
+import { distributors, fetchTariffData } from '@/utils/distributors';
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface CalculatorFormProps {
   onCalculate: (results: CalculationResults) => void;
@@ -33,18 +34,8 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
     distributor: ''
   });
 
-  // State for distributor selection
-  const [selectedState, setSelectedState] = useState<string>('');
-  const [stateDistributors, setStateDistributors] = useState<any[]>([]);
-  
-  // Update available distributors when state changes
-  useEffect(() => {
-    if (selectedState) {
-      setStateDistributors(getDistributorsByState(selectedState));
-    } else {
-      setStateDistributors([]);
-    }
-  }, [selectedState]);
+  // Loading state for tariff data
+  const [loadingTariffs, setLoadingTariffs] = useState<boolean>(false);
   
   // Costs data
   const [costsData, setCostsData] = useState<CostsData>({
@@ -81,6 +72,33 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
   
   // State for input mode (per Wp or total CAPEX)
   const [capexInputMode, setCapexInputMode] = useState<'perWp' | 'total'>('perWp');
+  
+  // Fetch tariff data when distributor changes
+  useEffect(() => {
+    const fetchTariffs = async () => {
+      if (!systemData.distributor) return;
+      
+      setLoadingTariffs(true);
+      try {
+        const tariffs = await fetchTariffData(systemData.distributor);
+        setTariffsData(prevTariffs => ({
+          ...prevTariffs,
+          energyTariff: tariffs.energyTariff,
+          distributionTariff: tariffs.distributionTariff,
+          generationDistributionTariff: tariffs.generationDistributionTariff,
+          consumptionDistributionTariff: tariffs.consumptionDistributionTariff
+        }));
+        toast.success("Tarifas atualizadas com sucesso");
+      } catch (error) {
+        console.error("Error fetching tariff data:", error);
+        toast.error("Erro ao buscar tarifas da distribuidora");
+      } finally {
+        setLoadingTariffs(false);
+      }
+    };
+    
+    fetchTariffs();
+  }, [systemData.distributor]);
   
   // Handle calculating results
   const handleCalculate = () => {
@@ -219,50 +237,23 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
             />
           </div>
           
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="state">Estado</Label>
-              <Select 
-                value={selectedState}
-                onValueChange={setSelectedState}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {states.map(state => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="distributor">Distribuidora</Label>
-              <Select 
-                value={systemData.distributor}
-                onValueChange={(value) => setSystemData({...systemData, distributor: value})}
-                disabled={!selectedState}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder={selectedState ? "Selecione a distribuidora" : "Selecione o estado primeiro"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {stateDistributors.map(distributor => (
-                    <SelectItem key={distributor.id} value={distributor.id}>
-                      {distributor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!selectedState && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Selecione um estado primeiro para ver as distribuidoras disponíveis
-                </p>
-              )}
-            </div>
+          <div>
+            <Label htmlFor="distributor">Distribuidora</Label>
+            <Select 
+              value={systemData.distributor}
+              onValueChange={(value) => setSystemData({...systemData, distributor: value})}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecione a distribuidora" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {distributors.map(distributor => (
+                  <SelectItem key={distributor.id} value={distributor.id}>
+                    {distributor.name} ({distributor.state})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </TabsContent>
         
@@ -392,6 +383,13 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
         
         {/* Tariffs Tab */}
         <TabsContent value="tariffs" className="space-y-4 animate-slide-up">
+          {loadingTariffs && (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span>Carregando tarifas...</span>
+            </div>
+          )}
+          
           <div>
             <Label htmlFor="energyTariff">TE (R$/MWh)</Label>
             <Input
@@ -402,6 +400,9 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setTariffsData({...tariffsData, energyTariff: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tarifa de Energia - Subgrupo B1, Residencial Convencional
+            </p>
           </div>
           
           <div>
@@ -414,6 +415,9 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setTariffsData({...tariffsData, distributionTariff: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tarifa de Uso do Sistema de Distribuição - Subgrupo A4, Verde
+            </p>
           </div>
           
           <div>
@@ -426,6 +430,9 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setTariffsData({...tariffsData, generationDistributionTariff: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              TUSD Geração - Subgrupo A4, Modalidade Geração
+            </p>
           </div>
           
           <div>
@@ -438,6 +445,9 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setTariffsData({...tariffsData, consumptionDistributionTariff: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              TUSD Consumo - Subgrupo A4, Modalidade Verde
+            </p>
           </div>
           
           <div>
