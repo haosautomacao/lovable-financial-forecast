@@ -1,4 +1,3 @@
-
 /**
  * Financial calculations for distributed generation investment analysis
  */
@@ -7,7 +6,8 @@
 export interface SystemData {
   powerDC: number;               // kWp
   annualGeneration: number;      // MWh
-  contractedDemand: number;      // kW
+  contractedDemand: number;      // kW (generation)
+  loadDemand: number;            // kW (load)
 }
 
 export interface CostsData {
@@ -37,7 +37,6 @@ export interface FinancialParams {
   annualDegradation: number;     // %
   depreciationYears: number;     // Years
   projectDuration: number;       // Years
-  customerDiscount: number;      // %
   defaultRate: number;           // %
 }
 
@@ -133,11 +132,11 @@ export function calculateFinancialMetrics(
     
     // Calculate revenue
     const energyRevenue = generation * (tariffsData.energyTariff + tariffsData.distributionTariff) * adjustmentFactor;
-    const demandRevenue = systemData.contractedDemand * 
+    const demandRevenue = (systemData.contractedDemand + systemData.loadDemand) * 
       (tariffsData.generationDistributionTariff + tariffsData.consumptionDistributionTariff) * 12 * adjustmentFactor;
     
     const grossRevenue = (energyRevenue + demandRevenue) * 
-      (1 - financialParams.customerDiscount / 100) * 
+      (1 - financialParams.discountRate / 100) * 
       (1 - financialParams.defaultRate / 100);
     
     // Calculate costs
@@ -220,3 +219,4 @@ export function calculateFinancialMetrics(
     initialInvestment
   };
 }
+

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -27,7 +26,8 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
   const [systemData, setSystemData] = useState<SystemData>({
     powerDC: 100,
     annualGeneration: 150,
-    contractedDemand: 80
+    contractedDemand: 80,
+    loadDemand: 100
   });
   
   // Costs data
@@ -60,7 +60,6 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
     annualDegradation: 0.8,
     depreciationYears: 10,
     projectDuration: 25,
-    customerDiscount: 0,
     defaultRate: 0
   });
   
@@ -176,13 +175,25 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
           </div>
           
           <div>
-            <Label htmlFor="contractedDemand">Demanda Contratada (kW)</Label>
+            <Label htmlFor="contractedDemand">Demanda Contratada - Geração (kW)</Label>
             <Input
               id="contractedDemand"
               type="number"
               step="0.01"
               value={systemData.contractedDemand}
               onChange={e => setSystemData({...systemData, contractedDemand: parseFloat(e.target.value) || 0})}
+              className="mt-1"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="loadDemand">Demanda Contratada - Carga (kW)</Label>
+            <Input
+              id="loadDemand"
+              type="number"
+              step="0.01"
+              value={systemData.loadDemand}
+              onChange={e => setSystemData({...systemData, loadDemand: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
           </div>
@@ -399,6 +410,9 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setFinancialParams({...financialParams, discountRate: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Taxa usada para descontar fluxos de caixa futuros e para calcular o desconto para o cliente
+            </p>
           </div>
           
           <div>
@@ -465,20 +479,6 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               max="30"
               value={financialParams.projectDuration}
               onChange={e => setFinancialParams({...financialParams, projectDuration: parseInt(e.target.value) || 25})}
-              className="mt-1"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="customerDiscount">Desconto para Cliente (%)</Label>
-            <Input
-              id="customerDiscount"
-              type="number"
-              step="0.01"
-              min="0"
-              max="100"
-              value={financialParams.customerDiscount}
-              onChange={e => setFinancialParams({...financialParams, customerDiscount: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
           </div>
