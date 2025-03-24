@@ -8,6 +8,7 @@ export interface SystemData {
   annualGeneration: number;      // MWh
   contractedDemand: number;      // kW (generation)
   loadDemand: number;            // kW (load)
+  distributor: string;           // Power utility company
 }
 
 export interface CostsData {
@@ -219,4 +220,3 @@ export function calculateFinancialMetrics(
     initialInvestment
   };
 }
-

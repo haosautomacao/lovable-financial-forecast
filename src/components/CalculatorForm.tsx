@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import {
   calculateFinancialMetrics,
   CalculationResults
 } from '@/utils/calculations';
+import { distributors, states, getDistributorsByState } from '@/utils/distributors';
 import { toast } from "sonner";
 
 interface CalculatorFormProps {
@@ -27,8 +29,22 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
     powerDC: 100,
     annualGeneration: 150,
     contractedDemand: 80,
-    loadDemand: 100
+    loadDemand: 100,
+    distributor: ''
   });
+
+  // State for distributor selection
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [stateDistributors, setStateDistributors] = useState<any[]>([]);
+  
+  // Update available distributors when state changes
+  useEffect(() => {
+    if (selectedState) {
+      setStateDistributors(getDistributorsByState(selectedState));
+    } else {
+      setStateDistributors([]);
+    }
+  }, [selectedState]);
   
   // Costs data
   const [costsData, setCostsData] = useState<CostsData>({
@@ -77,6 +93,11 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
       
       if (systemData.annualGeneration <= 0) {
         toast.error("Geração anual deve ser maior que zero");
+        return;
+      }
+      
+      if (!systemData.distributor) {
+        toast.error("Selecione uma distribuidora");
         return;
       }
       
@@ -196,6 +217,52 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({ onCalculate, onProjectN
               onChange={e => setSystemData({...systemData, loadDemand: parseFloat(e.target.value) || 0})}
               className="mt-1"
             />
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="state">Estado</Label>
+              <Select 
+                value={selectedState}
+                onValueChange={setSelectedState}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione o estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {states.map(state => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="distributor">Distribuidora</Label>
+              <Select 
+                value={systemData.distributor}
+                onValueChange={(value) => setSystemData({...systemData, distributor: value})}
+                disabled={!selectedState}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={selectedState ? "Selecione a distribuidora" : "Selecione o estado primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stateDistributors.map(distributor => (
+                    <SelectItem key={distributor.id} value={distributor.id}>
+                      {distributor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedState && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Selecione um estado primeiro para ver as distribuidoras disponíveis
+                </p>
+              )}
+            </div>
           </div>
         </TabsContent>
         
